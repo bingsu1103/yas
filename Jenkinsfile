@@ -61,20 +61,22 @@ pipeline {
 // Hàm bổ trợ để build, scan bảo mật và check coverage
 def buildService(serviceName) {
     script {
-        dir(serviceName) {
-            echo "--- Processing ${serviceName} ---"
-            
-            echo "Running Snyk scan for ${serviceName}..."
-            // Sử dụng || true để lỗi -13 không làm dừng cả pipeline
-            sh "snyk test --all-projects --org=bingsu1103 || echo 'Snyk scan for ${serviceName} failed or found issues'"
-            
-            echo "Building and testing ${serviceName}..."
-            // Truyền -Drevision để Maven giải mã được version parent
-            sh "mvn clean test jacoco:report -Drevision=${env.REVISION}"
-            
-            if (fileExists('target/site/jacoco/index.html')) {
-                echo "Coverage report found for ${serviceName}"
-            }
+        echo "--- Processing ${serviceName} ---"
+        
+        // Security: Snyk scan per service
+        echo "Running Snyk scan for ${serviceName}..."
+        sh "snyk test --org=bingsu1103 --file=${serviceName}/pom.xml || echo 'Snyk scan for ${serviceName} failed or found issues'"
+        
+        echo "Building and testing ${serviceName}..."
+        // Run from root using -pl (project list) and -am (also make dependencies)
+        // -U forces update of dependencies to clear cached failures
+        sh "mvn clean test jacoco:report -pl ${serviceName} -am -Drevision=${REVISION} -U"
+        
+        // Coverage check logic (can be expanded)
+        echo "Checking test coverage for ${serviceName}..."
+        // The report will be at ${serviceName}/target/site/jacoco/index.html
+        if (fileExists("${serviceName}/target/site/jacoco/index.html")) {
+            echo "Coverage report found for ${serviceName}"
         }
     }
 }
