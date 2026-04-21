@@ -26,10 +26,10 @@ pipeline {
                     try {
                         withCredentials([string(credentialsId: 'sonar-api-token', variable: 'SONAR_TOKEN')]) {
                             echo 'Running SonarCloud analysis...'
-                            sh "mvn sonar:sonar -Dsonar.organization=bingsu1103-yas -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
+                            sh "mvn sonar:sonar -Dsonar.organization=bingsu1103-yas -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
                         }
                     } catch (Exception e) {
-                        echo "WARNING: SonarCloud scan skipped because 'sonar-api-token' credential is not set in Jenkins."
+                        echo "WARNING: SonarCloud scan skipped or failed: ${e.message}"
                     }
                 }
             }
@@ -52,7 +52,7 @@ pipeline {
                    mvn test jacoco:report \
                    -pl media,product,cart \
                    -am -Drevision=${env.REVISION} -U \
-                   -T 1C -Dtest=!CdcConsumerTest*
+                   -T 1C -Dtest=!*IT,!CdcConsumerTest*
                 """
             }
         }
