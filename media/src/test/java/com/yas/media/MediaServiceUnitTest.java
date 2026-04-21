@@ -85,7 +85,7 @@ class MediaServiceUnitTest {
 
     @Test
     void getMedia_whenMediaNotFound_thenReturnNull() {
-        when(mediaRepository.findById(1L)).thenReturn(Optional.empty());
+        when(mediaRepository.findByIdWithoutFileInReturn(1L)).thenReturn(null);
 
         MediaVm mediaVm = mediaService.getMediaById(1L);
         assertNull(mediaVm);
@@ -93,10 +93,24 @@ class MediaServiceUnitTest {
 
     @Test
     void removeMedia_whenMediaNotFound_thenThrowsNotFoundException() {
-        when(mediaRepository.findById(1L)).thenReturn(Optional.empty());
+        when(mediaRepository.findByIdWithoutFileInReturn(1L)).thenReturn(null);
 
         NotFoundException exception = assertThrows(NotFoundException.class, () -> mediaService.removeMedia(1L));
         assertEquals(String.format("Media %s is not found", 1L), exception.getMessage());
+    }
+
+    @Test
+    void getFile_whenSuccess_thenReturnMediaDto() {
+        when(mediaRepository.findById(1L)).thenReturn(Optional.of(media));
+        media.setFilePath("path/to/file");
+        java.io.InputStream inputStream = new java.io.ByteArrayInputStream("test content".getBytes());
+        when(fileSystemRepository.getFile("path/to/file")).thenReturn(inputStream);
+
+        MediaDto mediaDto = mediaService.getFile(1L, "file");
+
+        assertNotNull(mediaDto);
+        assertEquals(org.springframework.http.MediaType.IMAGE_JPEG, mediaDto.getMediaType());
+        assertNotNull(mediaDto.getContent());
     }
 
     @Test

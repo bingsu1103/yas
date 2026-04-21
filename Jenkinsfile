@@ -9,6 +9,7 @@ pipeline {
         REVISION = '1.0-SNAPSHOT'
         // Increase memory for Snyk CLI (Node.js) to prevent -13 error
         NODE_OPTIONS = '--max-old-space-size=4096'
+        SONAR_TOKEN = credentials('sonar-api-token')
     }
 
     stages {
@@ -22,8 +23,15 @@ pipeline {
 
         stage('Security: Gitleaks Scan') {
             steps {
-                // Use .gitleaksignore file to filter noise
+                // Use configuration to filter noise
                 sh 'gitleaks detect --source . -v || echo "Gitleaks found issues"'
+            }
+        }
+
+        stage('Security: SonarCloud Scan') {
+            steps {
+                echo 'Running SonarCloud analysis...'
+                sh "mvn sonar:sonar -Dsonar.organization=bingsu1103 -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
             }
         }
 
@@ -86,9 +94,9 @@ def buildService(serviceName) {
             
             echo "Coverage for ${serviceName}: ${coverage}%"
             
-            // Temporary threshold at 50% to verify Green Build
-            if (coverage < 50.0) {
-                error "Test coverage for ${serviceName} is ${coverage}%, which is below the required 50%!"
+            // Enforce > 70% coverage as per Requirement 7b
+            if (coverage < 70.0) {
+                error "Test coverage for ${serviceName} is ${coverage}%, which is below the required 70%!"
             }
         } else {
             echo "Waring: No coverage report found at ${csvPath}. Skipping enforcement."
