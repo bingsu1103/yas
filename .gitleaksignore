@@ -1,5 +1,0 @@
-# Ignore Keycloak test realm exports and realm data
-**/test-realm.json
-**/realm-export.json
-**/test/resources/**
-**/it/resources/**

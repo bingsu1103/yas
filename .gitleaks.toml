@@ -1,0 +1,8 @@
+[allowlist]
+description = "Ignore test data and realm exports"
+paths = [
+    '''/test/''',
+    '''/resources/.*test-realm\.json''',
+    '''realm-export\.json''',
+    '''k8s/charts/yas-configuration/values\.yaml'''
+]
