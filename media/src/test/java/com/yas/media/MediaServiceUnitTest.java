@@ -92,6 +92,72 @@ class MediaServiceUnitTest {
     }
 
     @Test
+    void getFile_whenSuccess_thenReturnMediaDto() {
+        Media media = new Media();
+        media.setFileName("test.jpg");
+        media.setMediaType("image/jpeg");
+        media.setData(new byte[]{1, 2, 3});
+
+        when(mediaRepository.findById(1L)).thenReturn(Optional.of(media));
+
+        MediaDto result = mediaService.getFile(1L);
+
+        assertNotNull(result);
+        assertEquals("test.jpg", result.fileName());
+        assertEquals(3, result.content().length);
+    }
+
+    @Test
+    void getFile_whenNotFound_thenThrowNotFoundException() {
+        when(mediaRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> mediaService.getFile(1L));
+    }
+
+    @Test
+    void saveMedia_whenValidFile_thenReturnMedia() {
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getContentType()).thenReturn("image/jpeg");
+        try {
+            when(file.getBytes()).thenReturn(new byte[]{1, 2, 3});
+        } catch (Exception e) {}
+
+        Media savedMedia = new Media();
+        savedMedia.setId(100L);
+        when(mediaRepository.save(any(Media.class))).thenReturn(savedMedia);
+
+        Media result = mediaService.saveMedia(file, "caption", "description");
+
+        assertNotNull(result);
+        assertEquals(100L, result.getId());
+    }
+
+    @Test
+    void saveMedia_whenIOException_thenThrowBadRequestException() {
+        MultipartFile file = mock(MultipartFile.class);
+        try {
+            when(file.getBytes()).thenThrow(new IOException("Read error"));
+        } catch (Exception e) {}
+
+        assertThrows(BadRequestException.class, () -> mediaService.saveMedia(file, "caption", "description"));
+    }
+
+    @Test
+    void getMediaById_whenValidId_thenReturnMediaVm() {
+        Media media = new Media();
+        media.setId(1L);
+        media.setFileName("test.jpg");
+        
+        when(mediaRepository.findByIdWithoutFileInReturn(1L)).thenReturn(media);
+        
+        MediaVm result = mediaService.getMediaById(1L);
+        
+        assertNotNull(result);
+        assertEquals(1L, result.id());
+    }
+
+    @Test
     void removeMedia_whenMediaNotFound_thenThrowsNotFoundException() {
         when(mediaRepository.findByIdWithoutFileInReturn(1L)).thenReturn(null);
 

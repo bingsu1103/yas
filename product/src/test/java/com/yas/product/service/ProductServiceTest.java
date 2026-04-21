@@ -126,4 +126,33 @@ class ProductServiceTest {
 
         assertThrows(NotFoundException.class, () -> productService.getProductsByBrand("invalid"));
     }
+
+    @Test
+    void getFeaturedProducts_whenCalled_thenReturnList() {
+        when(productRepository.findAllByIsPublishedTrueAndIsFeaturedTrueOrderByIdDesc(org.mockito.ArgumentMatchers.any())).thenReturn(org.springframework.data.domain.Page.empty());
+
+        var result = productService.getFeaturedProducts(0, 10);
+
+        assertNotNull(result);
+        assertEquals(0, result.totalElements());
+    }
+
+    @Test
+    void getProductsFromCategory_whenCategoryExists_thenReturnList() {
+        Category category = Category.builder().id(1L).slug("cat").build();
+        when(categoryRepository.findBySlug("cat")).thenReturn(Optional.of(category));
+        when(productRepository.getProductsFromCategory(anyString(), anyString(), anyString(), anyString(), any())).thenReturn(org.springframework.data.domain.Page.empty());
+
+        var result = productService.getProductsFromCategory("cat", 0, 10, "asc", "name");
+
+        assertNotNull(result);
+        assertEquals(0, result.totalElements());
+    }
+
+    @Test
+    void getProductsFromCategory_whenCategoryNotFound_thenThrowNotFoundException() {
+        when(categoryRepository.findBySlug(anyString())).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> productService.getProductsFromCategory("invalid", 0, 10, "asc", "name"));
+    }
 }
