@@ -48,12 +48,12 @@ pipeline {
                 echo 'Building and testing services in parallel using Maven...'
                 // Run all services in one go to share parent context and avoid parallel-run clashes
                 // -T 1C enables Maven parallel build safely within the reactor
-                sh """
-                   mvn test jacoco:report \
-                   -pl media,product,cart \
-                   -am -Drevision=${env.REVISION} -U \
-                   -T 1C -Dtest=!*IT,!CdcConsumerTest*
-                """
+                 sh """
+                    mvn test jacoco:report \
+                    -pl media,product,cart \
+                    -am -Drevision=${env.REVISION} -U \
+                    -T 1C "-Dsurefire.exclude=**/*IT.java" -Dsurefire.failIfNoSpecifiedTests=false
+                 """
             }
         }
 
@@ -97,8 +97,8 @@ def checkServiceQuality(serviceName) {
         
         // Define thresholds
         def threshold = 70.0
-        if (serviceName == 'product') threshold = 15.0 // Adjust based on earlier discussion
-        if (serviceName == 'media') threshold = 60.0
+        if (serviceName == 'product') threshold = 30.0
+        if (serviceName == 'media') threshold = 70.0
         
         if (coverage < threshold) {
             error "FAILURE: ${serviceName} test coverage (${coverage}%) is below required threshold (${threshold}%)!"

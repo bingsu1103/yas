@@ -75,9 +75,9 @@ class MediaServiceUnitTest {
 
         MediaVm mediaVm = mediaService.getMediaById(1L);
         assertNotNull(mediaVm);
-        assertEquals("Test", mediaVm.caption());
-        assertEquals("fileName", mediaVm.fileName());
-        assertEquals("image/png", mediaVm.mediaType());
+        assertEquals("Test", mediaVm.getCaption());
+        assertEquals("fileName", mediaVm.getFileName());
+        assertEquals("image/png", mediaVm.getMediaType());
     }
 
     @Test
