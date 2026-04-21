@@ -2,13 +2,7 @@ pipeline {
     agent { label 'Macbook-Agent' }
 
     environment {
-        // Đường dẫn Java 21 trên Mac của bạn
-        JAVA_HOME = sh(script: '/usr/libexec/java_home -v 21', returnStdout: true).trim()
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
-        SNYK_TOKEN = credentials('snyk-api-token')
-        REVISION = '1.0-SNAPSHOT'
-        // Increase memory for Snyk CLI (Node.js) to prevent -13 error
-        NODE_OPTIONS = '--max-old-space-size=4096'
+        REVISION = "1.0-SNAPSHOT"
     }
 
     stages {
@@ -22,8 +16,7 @@ pipeline {
 
         stage('Security: Gitleaks Scan') {
             steps {
-                // Use configuration to filter noise
-                sh 'gitleaks detect --source . -v || echo "Gitleaks found issues"'
+                sh 'gitleaks detect --source . -v'
             }
         }
 
@@ -50,16 +43,27 @@ pipeline {
             }
         }
 
-        stage('Build & Scan Services') {
-            parallel {
-                stage('Media Service') {
-                    steps { buildService('media') }
-                }
-                stage('Product Service') {
-                    steps { buildService('product') }
-                }
-                stage('Cart Service') {
-                    steps { buildService('cart') }
+        stage('Build & Test Services') {
+            steps {
+                echo 'Building and testing services in parallel using Maven...'
+                // Run all services in one go to share parent context and avoid parallel-run clashes
+                // -T 1C enables Maven parallel build safely within the reactor
+                sh """
+                   mvn test jacoco:report \
+                   -pl media,product,cart \
+                   -am -Drevision=${env.REVISION} -U \
+                   -T 1C -Dtest=!CdcConsumerTest*
+                """
+            }
+        }
+
+        stage('Quality Gate: Coverage & Security') {
+            steps {
+                script {
+                    def services = ['media', 'product', 'cart']
+                    for (service in services) {
+                        checkServiceQuality(service)
+                    }
                 }
             }
         }
@@ -72,44 +76,36 @@ pipeline {
     }
 }
 
-def buildService(serviceName) {
-    script {
-        echo "--- Processing ${serviceName} ---"
+def checkServiceQuality(serviceName) {
+    echo "--- Quality Check for ${serviceName} ---"
+    
+    // 1. Snyk Security Scan
+    echo "Running Snyk scan for ${serviceName}..."
+    sh "snyk test --org=bingsu1103 --file=${serviceName}/pom.xml || echo 'Snyk scan failed or found issues'"
+    
+    // 2. Coverage threshold check
+    echo "Checking test coverage for ${serviceName}..."
+    def csvPath = "${serviceName}/target/site/jacoco/jacoco.csv"
+    
+    if (fileExists(csvPath)) {
+        def coverage = sh(
+            script: "awk -F, 'NR > 1 {missed += \$4; covered += \$5} END {if (covered + missed > 0) print (covered / (covered + missed)) * 100; else print 0}' ${csvPath}",
+            returnStdout: true
+        ).trim().toDouble()
         
-        echo "Building and testing ${serviceName}..."
-        // Generate jacoco.csv for automated coverage checking
-        sh "mvn test jacoco:report -pl ${serviceName} -Drevision=${REVISION} -U -Dtest=!CdcConsumerTest*"
+        echo "${serviceName} Coverage: ${coverage}%"
         
-        // Security: Snyk scan per service (after build confirms dependencies are ok)
-        echo "Running Snyk scan for ${serviceName}..."
-        sh "snyk test --org=bingsu1103 --file=${serviceName}/pom.xml || echo 'Snyk scan failed or found issues'"
+        // Define thresholds
+        def threshold = 70.0
+        if (serviceName == 'product') threshold = 15.0 // Adjust based on earlier discussion
+        if (serviceName == 'media') threshold = 60.0
         
-        // Coverage check logic: Enforce > 70%
-        echo "Checking test coverage for ${serviceName}..."
-        def csvPath = "${serviceName}/target/site/jacoco/jacoco.csv"
-        
-        if (fileExists(csvPath)) {
-            // Calculate coverage percentage from CSV: (Covered / Total) * 100
-            // Column 4 is INSTRUCTION_MISSED, Column 5 is INSTRUCTION_COVERED
-            def coverage = sh(
-                script: "awk -F, 'NR > 1 {missed += \$4; covered += \$5} END {if (covered + missed > 0) print (covered / (covered + missed)) * 100; else print 0}' ${csvPath}",
-                returnStdout: true
-            ).trim().toFloat()
-            
-            echo "Coverage for ${serviceName}: ${coverage}%"
-            
-            // Set service-specific thresholds
-            def threshold = 70.0
-            if (serviceName == "product") threshold = 15.0 // Realistic for 57KB file
-            if (serviceName == "media") threshold = 60.0
-            
-            if (coverage < threshold) {
-                error "Test coverage for ${serviceName} is ${coverage}%, which is below the required ${threshold}%!"
-            } else {
-                echo "SUCCESS: Coverage for ${serviceName} is ${coverage}%, meeting the requirement."
-            }
+        if (coverage < threshold) {
+            error "FAILURE: ${serviceName} test coverage (${coverage}%) is below required threshold (${threshold}%)!"
         } else {
-            echo "Waring: No coverage report found at ${csvPath}. Skipping enforcement."
+            echo "SUCCESS: ${serviceName} test coverage (${coverage}%) meets the target."
         }
+    } else {
+        echo "WARNING: JaCoCo report not found at ${csvPath}. Skipping coverage check."
     }
 }
