@@ -78,7 +78,7 @@ def buildService(serviceName) {
         
         echo "Building and testing ${serviceName}..."
         // Generate jacoco.csv for automated coverage checking
-        sh "mvn clean test jacoco:report -pl ${serviceName} -am -Drevision=${REVISION} -U"
+        sh "mvn clean test jacoco:report -pl ${serviceName} -Drevision=${REVISION} -U"
         
         // Security: Snyk scan per service (after build confirms dependencies are ok)
         echo "Running Snyk scan for ${serviceName}..."
