@@ -20,21 +20,6 @@ pipeline {
             }
         }
 
-        stage('Security: SonarCloud Scan') {
-            steps {
-                script {
-                    try {
-                        withCredentials([string(credentialsId: 'sonar-api-token', variable: 'SONAR_TOKEN')]) {
-                            echo 'Running SonarCloud analysis...'
-                            sh "mvn sonar:sonar -Dsonar.organization=bingsu1103-yas -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
-                        }
-                    } catch (Exception e) {
-                        echo "WARNING: SonarCloud scan skipped or failed: ${e.message}"
-                    }
-                }
-            }
-        }
-
         stage('Build Shared Libraries') {
             steps {
                 echo 'Installing root POM and shared libraries...'
@@ -54,6 +39,22 @@ pipeline {
                     -am -Drevision=${env.REVISION} -U \
                     -T 1C "-Dsurefire.exclude=**/*IT.java" -Dsurefire.failIfNoSpecifiedTests=false
                  """
+            }
+        }
+
+        stage('Security: SonarCloud Scan') {
+            steps {
+                script {
+                    try {
+                        withCredentials([string(credentialsId: 'sonar-api-token', variable: 'SONAR_TOKEN')]) {
+                            echo 'Running SonarCloud analysis...'
+                            // Running at root after compilation so it picks up all modules
+                            sh "mvn sonar:sonar -Dsonar.organization=bingsu1103-yas -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
+                        }
+                    } catch (Exception e) {
+                        echo "WARNING: SonarCloud scan skipped or failed: ${e.message}"
+                    }
+                }
             }
         }
 
