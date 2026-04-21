@@ -19,8 +19,15 @@ pipeline {
 
         stage('Security: Gitleaks Scan') {
             steps {
-                // Quét secret trong code, dùng true để không làm build bị fail nếu có leak cũ
                 sh 'gitleaks detect --source . -v || echo "Secrets detected OR Gitleaks error"'
+            }
+        }
+
+        stage('Build Shared Libraries') {
+            steps {
+                echo "Installing shared libraries (common-library, etc.)..."
+                // Build và install các thư viện dùng chung vào .m2 cục bộ
+                sh 'mvn clean install -DskipTests -pl common-library -am'
             }
         }
 
@@ -44,7 +51,6 @@ pipeline {
                         script { buildService("cart") }
                     }
                 }
-                // Thêm các service khác tại đây
             }
         }
     }
