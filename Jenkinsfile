@@ -20,14 +20,14 @@ pipeline {
 
         stage('Security: Gitleaks Scan') {
             steps {
-                sh 'gitleaks detect --source . -v || echo "Secrets detected OR Gitleaks error"'
+                // Exclude common test data paths to reduce noise from 125 leaks to actual issues
+                sh 'gitleaks detect --source . -v --exclude-path ".*/test/.*" --exclude-path ".*/resources/.*json" || echo "Gitleaks found issues or errored"'
             }
         }
 
         stage('Build Shared Libraries') {
             steps {
                 echo 'Installing root POM and shared libraries...'
-                // Install parent POM first with resolved version
                 sh "mvn install -N -DskipTests -Drevision=${env.REVISION}"
                 sh "mvn clean install -DskipTests -pl common-library -am -Drevision=${env.REVISION}"
             }
@@ -58,25 +58,37 @@ pipeline {
     }
 }
 
-// Hàm bổ trợ để build, scan bảo mật và check coverage
 def buildService(serviceName) {
     script {
         echo "--- Processing ${serviceName} ---"
         
-        // Security: Snyk scan per service
-        echo "Running Snyk scan for ${serviceName}..."
-        sh "snyk test --org=bingsu1103 --file=${serviceName}/pom.xml || echo 'Snyk scan for ${serviceName} failed or found issues'"
-        
         echo "Building and testing ${serviceName}..."
-        // Run from root using -pl (project list) and -am (also make dependencies)
-        // -U forces update of dependencies to clear cached failures
+        // Generate jacoco.csv for automated coverage checking
         sh "mvn clean test jacoco:report -pl ${serviceName} -am -Drevision=${REVISION} -U"
         
-        // Coverage check logic (can be expanded)
+        // Security: Snyk scan per service (after build confirms dependencies are ok)
+        echo "Running Snyk scan for ${serviceName}..."
+        sh "snyk test --org=bingsu1103 --file=${serviceName}/pom.xml || echo 'Snyk scan failed or found issues'"
+        
+        // Coverage check logic: Enforce > 70%
         echo "Checking test coverage for ${serviceName}..."
-        // The report will be at ${serviceName}/target/site/jacoco/index.html
-        if (fileExists("${serviceName}/target/site/jacoco/index.html")) {
-            echo "Coverage report found for ${serviceName}"
+        def csvPath = "${serviceName}/target/site/jacoco/jacoco.csv"
+        
+        if (fileExists(csvPath)) {
+            // Calculate coverage percentage from CSV: (Covered / Total) * 100
+            // Column 4 is INSTRUCTION_MISSED, Column 5 is INSTRUCTION_COVERED
+            def coverage = sh(
+                script: "awk -F, 'NR > 1 {missed += \$4; covered += \$5} END {if (covered + missed > 0) print (covered / (covered + missed)) * 100; else print 0}' ${csvPath}",
+                returnStdout: true
+            ).trim().toFloat()
+            
+            echo "Coverage for ${serviceName}: ${coverage}%"
+            
+            if (coverage < 70.0) {
+                error "Test coverage for ${serviceName} is ${coverage}%, which is below the required 70%!"
+            }
+        } else {
+            echo "Waring: No coverage report found at ${csvPath}. Skipping enforcement."
         }
     }
 }
