@@ -9,7 +9,6 @@ pipeline {
         REVISION = '1.0-SNAPSHOT'
         // Increase memory for Snyk CLI (Node.js) to prevent -13 error
         NODE_OPTIONS = '--max-old-space-size=4096'
-        SONAR_TOKEN = credentials('sonar-api-token')
     }
 
     stages {
@@ -30,8 +29,16 @@ pipeline {
 
         stage('Security: SonarCloud Scan') {
             steps {
-                echo 'Running SonarCloud analysis...'
-                sh "mvn sonar:sonar -Dsonar.organization=bingsu1103 -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
+                script {
+                    try {
+                        withCredentials([string(credentialsId: 'sonar-api-token', variable: 'SONAR_TOKEN')]) {
+                            echo 'Running SonarCloud analysis...'
+                            sh "mvn sonar:sonar -Dsonar.organization=bingsu1103 -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
+                        }
+                    } catch (Exception e) {
+                        echo "WARNING: SonarCloud scan skipped because 'sonar-api-token' credential is not set in Jenkins."
+                    }
+                }
             }
         }
 
