@@ -6,6 +6,7 @@ pipeline {
         JAVA_HOME = sh(script: '/usr/libexec/java_home -v 21', returnStdout: true).trim()
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
         SNYK_TOKEN = credentials('snyk-api-token')
+        REVISION = '1.0-SNAPSHOT'
     }
 
     stages {
@@ -26,9 +27,9 @@ pipeline {
         stage('Build Shared Libraries') {
             steps {
                 echo 'Installing root POM and shared libraries...'
-                // Install parent POM first to resolve ${revision}
-                sh 'mvn install -N -DskipTests'
-                sh 'mvn clean install -DskipTests -pl common-library -am'
+                // Install parent POM first with resolved version
+                sh "mvn install -N -DskipTests -Drevision=${env.REVISION}"
+                sh "mvn clean install -DskipTests -pl common-library -am -Drevision=${env.REVISION}"
             }
         }
 
@@ -69,7 +70,7 @@ def buildService(serviceName) {
             
             echo "Building and testing ${serviceName}..."
             // Truyền -Drevision để Maven giải mã được version parent
-            sh "mvn clean test jacoco:report -Drevision=1.0-SNAPSHOT"
+            sh "mvn clean test jacoco:report -Drevision=${env.REVISION}"
             
             if (fileExists('target/site/jacoco/index.html')) {
                 echo "Coverage report found for ${serviceName}"
