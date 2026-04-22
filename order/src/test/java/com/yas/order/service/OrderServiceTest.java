@@ -494,6 +494,10 @@ class OrderServiceTest {
         OrderRequest request = new OrderRequest();
         request.setPageNo(0);
         request.setPageSize(10);
+        request.setCreatedFrom(ZonedDateTime.now());
+        request.setCreatedTo(ZonedDateTime.now());
+        request.setBillingCountry("US");
+        request.setBillingPhoneNumber("123");
         
         Page<Order> emptyPage = new PageImpl<>(List.of());
         when(orderRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage);

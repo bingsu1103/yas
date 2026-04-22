@@ -114,7 +114,7 @@ public class OrderService {
                 .billingAddressId(billOrderAddress)
                 .checkoutId(orderPostVm.checkoutId())
                 .build();
-        orderRepository.save(order);
+        order = orderRepository.save(order);
 
         Set<OrderItem> orderItems = orderPostVm.orderItemPostVms().stream()
                 .map(item -> OrderItem.builder()
@@ -300,10 +300,11 @@ public class OrderService {
         int pageSize = orderRequest.getPageSize();
 
         OrderListVm orderListVm = getAllOrder(
-            Pair.of(createdFrom, createdTo),
+                Pair.of(createdFrom != null ? createdFrom : ZonedDateTime.now().minusYears(100), 
+                        createdTo != null ? createdTo : ZonedDateTime.now().plusYears(100)),
             productName,
             orderStatus,
-            Pair.of(billingCountry, billingPhoneNumber),
+            Pair.of(billingCountry != null ? billingCountry : "", billingPhoneNumber != null ? billingPhoneNumber : ""),
             email,
             Pair.of(pageNo, pageSize)
         );
