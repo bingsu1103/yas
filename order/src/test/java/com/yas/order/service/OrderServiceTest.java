@@ -470,7 +470,20 @@ class OrderServiceTest {
 
             OrderExistsByProductAndUserGetVm result = orderService.isOrderCompletedWithUserIdAndProductId(10L);
 
-            assertTrue(result.existedOrder());
+            assertTrue(result.isPresent());
+        }
+    }
+
+    @Test
+    void testIsOrderCompleted_whenOrderDoesNotExist_thenReturnFalse() {
+        try (MockedStatic<AuthenticationUtils> authMock = mockStatic(AuthenticationUtils.class)) {
+            authMock.when(AuthenticationUtils::extractUserId).thenReturn("user-123");
+            when(productService.getProductVariations(anyLong())).thenReturn(List.of());
+            when(orderRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+
+            OrderExistsByProductAndUserGetVm result = orderService.isOrderCompletedWithUserIdAndProductId(10L);
+
+            assertFalse(result.isPresent());
         }
     }
 
