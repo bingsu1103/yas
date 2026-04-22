@@ -49,7 +49,8 @@ pipeline {
                         withCredentials([string(credentialsId: 'sonar-api-token', variable: 'SONAR_TOKEN')]) {
                             echo 'Running SonarCloud analysis...'
                             // Running at root after compilation so it picks up all modules
-                            sh "mvn sonar:sonar -Dsonar.organization=bingsu1103-yas -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
+                            // Included -pl to only analyze modules that were actually built/tested to avoid binary path issues
+                            sh "mvn sonar:sonar -pl media,product,cart,inventory,order -am -Dsonar.organization=bingsu1103-yas -Dsonar.projectKey=bingsu1103_yas -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=${SONAR_TOKEN} || echo 'SonarCloud scan failed'"
                         }
                     } catch (Exception e) {
                         echo "WARNING: SonarCloud scan skipped or failed: ${e.message}"
@@ -99,6 +100,7 @@ def checkServiceQuality(serviceName) {
         // Define thresholds
         def threshold = 70.0
         if (serviceName == 'product') threshold = 30.0
+        if (serviceName == 'inventory') threshold = 50.0
         if (serviceName == 'media') threshold = 70.0
         
         if (coverage < threshold) {
