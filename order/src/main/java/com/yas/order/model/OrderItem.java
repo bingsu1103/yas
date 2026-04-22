@@ -66,7 +66,7 @@ public class OrderItem extends AbstractAuditEntity {
 
     @SuppressWarnings("unused")
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "processing_state", columnDefinition = "jsonb")
+    @Column(name = "processing_state")
     private String processingState;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -28,7 +28,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "`order`")
+@Table(name = "\"order\"")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -101,12 +101,12 @@ public class Order extends AbstractAuditEntity {
 
     @SuppressWarnings("unused")
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "last_error", columnDefinition = "jsonb")
+    @Column(name = "last_error")
     private String lastError;
 
     @SuppressWarnings("unused")
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "attributes", columnDefinition = "jsonb")
+    @Column(name = "attributes")
     private String attributes;
 
     @SuppressWarnings("unused")

@@ -65,12 +65,12 @@ public class Checkout extends AbstractAuditEntity {
 
     @SuppressWarnings("unused")
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "last_error", columnDefinition = "jsonb")
+    @Column(name = "last_error")
     private String lastError;
 
     @SuppressWarnings("unused")
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "attributes", columnDefinition = "jsonb")
+    @Column(name = "attributes")
     private String attributes;
 
     @SuppressWarnings("unused")
