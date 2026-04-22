@@ -180,6 +180,7 @@ class ProductDetailServiceTest {
         ProductAttributeValue attrVal = new ProductAttributeValue();
         attrVal.setProductAttribute(attr);
         attrVal.setValue("Red");
+        attrVal.setId(1L);
         product.setAttributeValues(List.of(attrVal));
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
 
