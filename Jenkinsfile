@@ -35,7 +35,7 @@ pipeline {
                 // -T 1C enables Maven parallel build safely within the reactor
                  sh """
                     mvn test jacoco:report \
-                    -pl media,product,cart \
+                    -pl media,product,cart,inventory,order \
                     -am -Drevision=${env.REVISION} -U \
                     -T 1C "-Dsurefire.exclude=**/*IT.java" -Dsurefire.failIfNoSpecifiedTests=false
                  """
@@ -61,7 +61,7 @@ pipeline {
         stage('Quality Gate: Coverage & Security') {
             steps {
                 script {
-                    def services = ['media', 'product', 'cart']
+                    def services = ['media', 'product', 'cart', 'inventory', 'order']
                     for (service in services) {
                         checkServiceQuality(service)
                     }
