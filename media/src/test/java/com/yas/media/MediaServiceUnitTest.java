@@ -179,4 +179,57 @@ class MediaServiceUnitTest {
         media.setFileName(name);
         return media;
     }
+
+    @Test
+    void saveMedia_whenNoFileNameOverride_thenUseOriginalFileName() throws Exception {
+        byte[] content = new byte[]{1, 2, 3};
+        MultipartFile file = new MockMultipartFile("file", "original.jpg", "image/jpeg", content);
+        MediaPostVm postVm = new MediaPostVm("caption", file, null);
+
+        when(fileSystemRepository.persistFile("original.jpg", content)).thenReturn("path/to/file");
+        when(mediaRepository.save(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Media result = mediaService.saveMedia(postVm);
+
+        assertNotNull(result);
+        assertEquals("original.jpg", result.getFileName());
+    }
+
+    @Test
+    void saveMedia_whenFileNameOverrideIsEmpty_thenUseOriginalFileName() throws Exception {
+        byte[] content = new byte[]{1, 2, 3};
+        MultipartFile file = new MockMultipartFile("file", "original.jpg", "image/jpeg", content);
+        MediaPostVm postVm = new MediaPostVm("caption", file, "");
+
+        when(fileSystemRepository.persistFile("original.jpg", content)).thenReturn("path/to/file");
+        when(mediaRepository.save(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Media result = mediaService.saveMedia(postVm);
+
+        assertNotNull(result);
+        assertEquals("original.jpg", result.getFileName());
+    }
+
+    @Test
+    void getMediaById_whenFound_thenUrlContainsMediaIdAndFileName() {
+        NoFileMediaVm noFileMediaVm = new NoFileMediaVm(1L, "Test", "myfile.png", "image/png");
+        when(mediaRepository.findByIdWithoutFileInReturn(1L)).thenReturn(noFileMediaVm);
+        when(yasConfig.publicUrl()).thenReturn("http://localhost:8080");
+
+        MediaVm mediaVm = mediaService.getMediaById(1L);
+
+        assertNotNull(mediaVm);
+        assertThat(mediaVm.getUrl()).contains("/medias/1/file/myfile.png");
+    }
+
+    @Test
+    void getFile_whenFilePathIsNull_thenReturnEmptyDto() {
+        media.setFilePath(null);
+        when(mediaRepository.findById(1L)).thenReturn(Optional.of(media));
+
+        MediaDto result = mediaService.getFile(1L, "file");
+
+        assertNotNull(result);
+        assertNull(result.getContent());
+    }
 }

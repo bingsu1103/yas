@@ -22,6 +22,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import org.mockito.Mockito;
 
 @ExtendWith(MockitoExtension.class)
 class BrandServiceTest {
@@ -105,5 +106,54 @@ class BrandServiceTest {
         Assertions.assertThrows(NotFoundException.class, () -> {
             brandService.update(brandPostVm, 1L);
         });
+    }
+
+    @Test
+    void test_delete_brand_successfully() {
+        Brand brand = new Brand();
+        brand.setId(1L);
+        brand.setProducts(List.of());
+        when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
+
+        brandService.delete(1L);
+
+        Mockito.verify(brandRepository).deleteById(1L);
+    }
+
+    @Test
+    void test_delete_brand_not_found() {
+        when(brandRepository.findById(1L)).thenReturn(Optional.empty());
+
+        Assertions.assertThrows(NotFoundException.class, () -> {
+            brandService.delete(1L);
+        });
+    }
+
+    @Test
+    void test_delete_brand_with_products() {
+        Brand brand = new Brand();
+        brand.setId(1L);
+        com.yas.product.model.Product product = new com.yas.product.model.Product();
+        brand.setProducts(List.of(product));
+        when(brandRepository.findById(1L)).thenReturn(Optional.of(brand));
+
+        Assertions.assertThrows(com.yas.commonlibrary.exception.BadRequestException.class, () -> {
+            brandService.delete(1L);
+        });
+    }
+
+    @Test
+    void test_get_brands_by_ids() {
+        Brand brand1 = new Brand();
+        brand1.setId(1L);
+        brand1.setName("Brand1");
+        Brand brand2 = new Brand();
+        brand2.setId(2L);
+        brand2.setName("Brand2");
+        when(brandRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(brand1, brand2));
+
+        List<BrandVm> result = brandService.getBrandsByIds(List.of(1L, 2L));
+
+        assertEquals(2, result.size());
     }
 }
