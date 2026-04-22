@@ -20,6 +20,9 @@ public record OrderAddressVm(
         Long countryId,
         String countryName) {
     public static OrderAddressVm fromModel(OrderAddress orderAddress) {
+        if (orderAddress == null) {
+            return null;
+        }
         return OrderAddressVm.builder()
                 .id(orderAddress.getId())
                 .phone(orderAddress.getPhone())
