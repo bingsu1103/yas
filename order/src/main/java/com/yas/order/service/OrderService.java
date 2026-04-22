@@ -174,7 +174,7 @@ public class OrderService {
         String billingPhoneNumber = billingPair.getSecond();
 
         Specification<Order> spec = OrderSpecification.findOrderByWithMulCriteria(
-            orderStatus.isEmpty() ? allOrderStatus : orderStatus,
+            (orderStatus == null || orderStatus.isEmpty()) ? allOrderStatus : orderStatus,
             billingPhoneNumber,
             billingCountry,
             email,
