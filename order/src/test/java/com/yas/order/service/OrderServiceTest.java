@@ -12,6 +12,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 import com.yas.commonlibrary.exception.NotFoundException;
 import com.yas.order.mapper.OrderMapper;
@@ -25,11 +27,20 @@ import com.yas.order.viewmodel.order.OrderBriefVm;
 import com.yas.order.viewmodel.order.OrderListVm;
 import com.yas.order.viewmodel.order.OrderVm;
 import com.yas.order.viewmodel.order.PaymentOrderStatusVm;
+import com.yas.order.model.request.OrderRequest;
+import com.yas.order.viewmodel.order.OrderPostVm;
+import com.yas.order.viewmodel.orderaddress.OrderAddressPostVm;
+import com.yas.order.viewmodel.order.OrderItemPostVm;
+import com.yas.order.viewmodel.order.OrderExistsByProductAndUserGetVm;
+import com.yas.order.viewmodel.order.OrderGetVm;
+import com.yas.commonlibrary.utils.AuthenticationUtils;
+import org.mockito.MockedStatic;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -382,5 +393,100 @@ class OrderServiceTest {
             assertNotNull(result);
             assertEquals(1, result.orderList().size());
         }
+    }
+
+    // ========================== createOrder ==========================
+
+    @Test
+    void testCreateOrder_whenNormalCase_returnOrderVm() {
+        // Arrange
+        OrderAddressPostVm addressPostVm = OrderAddressPostVm.builder()
+                .phone("123456789")
+                .contactName("John Doe")
+                .addressLine1("Address 1")
+                .city("City")
+                .build();
+
+        OrderItemPostVm itemPostVm = OrderItemPostVm.builder()
+                .productId(10L)
+                .productName("Product")
+                .quantity(2)
+                .build();
+
+        OrderPostVm orderPostVm = OrderPostVm.builder()
+                .email("test@example.com")
+                .billingAddressPostVm(addressPostVm)
+                .shippingAddressPostVm(addressPostVm)
+                .orderItemPostVms(List.of(itemPostVm))
+                .checkoutId("checkout-123")
+                .build();
+
+        Order order = new Order();
+        order.setId(1L);
+        order.setOrderStatus(OrderStatus.PENDING);
+
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order)); // For acceptOrder internal call
+
+        // Act
+        OrderVm result = orderService.createOrder(orderPostVm);
+
+        // Assert
+        assertNotNull(result);
+        verify(orderRepository, times(2)).save(any(Order.class));
+        verify(productService).subtractProductStockQuantity(any(OrderVm.class));
+        verify(cartService).deleteCartItems(any(OrderVm.class));
+    }
+
+    // ========================== getMyOrders ==========================
+
+    @Test
+    void testGetMyOrders_whenOrdersExist_thenReturnOrderGetVmList() {
+        try (MockedStatic<AuthenticationUtils> authMock = mockStatic(AuthenticationUtils.class)) {
+            authMock.when(AuthenticationUtils::extractUserId).thenReturn("user-123");
+            
+            Order order = new Order();
+            order.setId(1L);
+            when(orderRepository.findAll(any(Specification.class), any(org.springframework.data.domain.Sort.class)))
+                    .thenReturn(List.of(order));
+
+            List<OrderGetVm> result = orderService.getMyOrders("product", OrderStatus.PENDING);
+
+            assertNotNull(result);
+            assertEquals(1, result.size());
+        }
+    }
+
+    // ========================== isOrderCompleted ==========================
+
+    @Test
+    void testIsOrderCompleted_whenOrderExists_thenReturnTrue() {
+        try (MockedStatic<AuthenticationUtils> authMock = mockStatic(AuthenticationUtils.class)) {
+            authMock.when(AuthenticationUtils::extractUserId).thenReturn("user-123");
+            when(productService.getProductVariations(anyLong())).thenReturn(List.of());
+            
+            Order order = new Order();
+            when(orderRepository.findOne(any(Specification.class))).thenReturn(Optional.of(order));
+
+            OrderExistsByProductAndUserGetVm result = orderService.isOrderCompletedWithUserIdAndProductId(10L);
+
+            assertTrue(result.existedOrder());
+        }
+    }
+
+    // ========================== exportCsv ==========================
+
+    @Test
+    void testExportCsv_whenNoOrders_thenReturnEmptyCsv() throws Exception {
+        OrderRequest request = new OrderRequest();
+        request.setPageNo(0);
+        request.setPageSize(10);
+        
+        Page<Order> emptyPage = new PageImpl<>(List.of());
+        when(orderRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(emptyPage);
+
+        byte[] result = orderService.exportCsv(request);
+
+        assertNotNull(result);
     }
 }
